@@ -1,0 +1,19 @@
+{
+  "name": "sequelize-auto-model",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "lib": "src"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/sinon": "^7.0.13",
+    "sequelize": "^5.18.1",
+    "sinon": "^7.4.2"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "noImplicitAny": true,
+    "removeComments": true,
+    "preserveConstEnums": true,
+    "sourceMap": true,
+    "target": "ES2018",
+    "allowJs": true,
+    "outDir": "dist",
+    "noLib": false,
+    "skipLibCheck": true,
+    "lib": [
+      "es7",
+      "es5",
+      "es2015"
+    ]
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.spec.ts"
+  ]
+}
