@@ -1,21 +1,34 @@
-import { Sequelize, Model, ModelOptions, InitOptions, ModelAttributes } from 'sequelize'
-import MyError from './myError'
-interface plainObject {
-  [key: string]: any
-}
+import { Sequelize, Model, ModelOptions, DataTypes, AbstractDataType, ModelAttributes, ModelCtor } from 'sequelize'
+import MyError from './MyError'
+const _ = require('lodash');
 
-export class SequelizeSpy extends Sequelize {
-  modelManagerSpy: plainObject = {}
+export interface modelObject {
+  modelName: string
+  attributes: ModelAttributes
+  ast?: plainObject
+}
+interface plainObject {
+  [key: string]: string | plainObject
+}
+interface InitOptions {
+  modelName: string
+  sequelize: SequelizeSpy
+}
+export class SequelizeSpy {
+  models: modelObject[] = []
   public define(modelName: string, attributes: ModelAttributes, options?: InitOptions) {
-    const modelManagerSpy = this.modelManagerSpy
-    const model = class extends Model {
-      public init(attributes: ModelAttributes, options?: InitOptions) {
-        modelManagerSpy[modelName] = attributes
+    const models = this.models
+    const model = class {
+      public static init(attributes: ModelAttributes, options: InitOptions) {
+        models.push({
+          modelName,
+          attributes
+        })
       }
     };
     options.modelName = modelName;
-    options.sequelize = sequelize
-    model.init(attributes, options as any);
+    options.sequelize = this
+    model.init(attributes, options);
 
     return model;
   }
@@ -81,6 +94,5 @@ for (const method of methods) {
 }
 
 
-const sequelize: SequelizeSpy = new SequelizeSpy()
 
-export default sequelize
+export default SequelizeSpy

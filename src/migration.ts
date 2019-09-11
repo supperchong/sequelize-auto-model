@@ -1,25 +1,46 @@
 // import { DataTypes, Sequelize } from 'sequelize'
 // import { Sequelize, DataTypes } from 'sequelize'
 const { Sequelize, DataTypes } = require('sequelize')
-import sequelizeSpy from './sequelizeSpy'
-import { readdirSync } from 'fs'
+import SequelizeSpy from './sequelizeSpy'
+import { readdirSync, fstat } from 'fs'
 import * as path from 'path'
 import QueryInterfaceSpy from './QueryInterfaceSpy.js'
 import * as sinon from 'sinon'
+import Integrate from './Integrate'
+import { plainObject, getComments, parse } from './util'
+import * as recast from "recast";
+import * as fs from 'fs'
+const readFileAsync = fs.promises.readFile
+// import { Sequelize } from 'sequelize/types'
 // const DataTypes = Sequelize.DataTypes
 const migrationRegExp = /^\d{14}.*?\.js$/
 const isMigrationPath: (path: string) => boolean = path => migrationRegExp.test(path)
 const resolvePath: (dir: string) => (p: string) => string = dir => p => path.resolve(dir, p)
 const ignorePathFilter: (ignorePath: string[]) => (p: string) => boolean = ignorePath => p => !ignorePath.find(v => v === p)
 export interface Config {
-  migrationDir: string;
-  ignoreMigration: string[],
-  modelDir: string;
+  dir: string;
+  ignores?: string[];
+  modelKey?: string;//use to find table object in migrations
+  modelNameKey?: string;// use to find table name
+  // modelDir: string;
+}
+interface commentOption {
+  //if retain js comment
+  comment: boolean
+}
+export interface modelComment {
+  modelName: string
+  comment: FieldComment[]
+}
+interface FieldComment {
+  field: string
+  comment: string
 }
 class Migration {
   public config: Config;
-  private _migrationPath: string[]
+  private _migrationPaths: string[]
   private _queryInterfaceSpy: QueryInterfaceSpy
+  private _comments: modelComment[]
   constructor(config: Config) {
     this.config = config;
     this._init()
@@ -28,24 +49,92 @@ class Migration {
     this._normalizePath()
   }
   private _normalizePath() {
-    const { migrationDir, ignoreMigration = [] } = this.config
+    const { dir: migrationDir, ignores: ignoreMigration = [] } = this.config
     const paths = readdirSync(migrationDir)
       .filter(isMigrationPath)
       .filter(ignorePathFilter(ignoreMigration))
       .map(resolvePath(migrationDir))
-    this._migrationPath = paths
+    this._migrationPaths = paths
   }
-  public get migrationPath() {
-    return this._migrationPath
+  public get migrationPaths() {
+    return this._migrationPaths
   }
   public get db() {
     const queryInterfaceSpy = this._queryInterfaceSpy
     return queryInterfaceSpy.getDb()
   }
+  public get modelNames() {
+    return Object.keys(this.db)
+  }
+  public getComment() {
+    return this._comments
+  }
+  public getMigrationType(ast: recast.types.ASTNode) {
+    recast.visit(ast, {
+      visitIdentifier: path => {
+        console.log('path')
+        return false
+      }
+    })
+  }
+  public async initComment(): Promise<void> {
+    const modelKey = this.config.modelKey
+    const modelNameKey = this.config.modelNameKey
+    const migrationPaths = this.migrationPaths
+    if (!modelKey) {
+      throw new Error('please provide key to find table in migration')
+    }
+
+    const comments = []
+    for (const migrationPath of migrationPaths) {
+      try {
+        const data = await readFileAsync(migrationPath, { encoding: 'utf8' })
+        const ast = recast.parse(data)
+        const properties = parse(modelKey, ast)
+        const modelName = parse(modelNameKey, ast)
+        const comment = getComments(properties)
+        comments.push({
+          modelName,
+          comment
+        })
+      } catch (err) {
+        console.log('read file ' + migrationPath + ' error', err)
+      }
+
+    }
+    this._comments = comments
+  }
+
+  public generateModelFileData(modelName: string, options?: commentOption) {
+    let comment: modelComment[] = []
+    if (options && options.comment) {
+      comment = this.getComment()
+    }
+    const model = this.db[modelName]
+    const modelData = Integrate.generateModelData(modelName, model, comment)
+    return modelData
+  }
+  public generateModelFileDatas(options?: commentOption) {
+    const modelNames = this.modelNames
+    const modelFileDatas: plainObject = {}
+    modelNames.forEach(modelName => modelFileDatas[modelName] = this.generateModelFileData(modelName, options))
+    return modelFileDatas
+  }
+  public normalizeAttribute() {
+    const tableNames = Object.keys(this.db)
+    for (const tableName of tableNames) {
+      const table = this.db[tableName]
+      const fields = Object.keys(table)
+      for (const field of fields) {
+        table[field] = Integrate.normalizeAttribute(table[field])
+      }
+    }
+  }
   public async initMigration() {
-    const migrationPath = this.migrationPath
+    const migrationPath = this.migrationPaths
     // sinon.stub()
-    const queryInterfaceSpy = new QueryInterfaceSpy(sequelizeSpy)
+    const sequelizeSpy = new SequelizeSpy()
+    const queryInterfaceSpy = new QueryInterfaceSpy((sequelizeSpy as any))
     this._queryInterfaceSpy = queryInterfaceSpy
     for (const p of migrationPath) {
       try {
@@ -56,7 +145,23 @@ class Migration {
         }
       }
     }
+    this.normalizeAttribute()
   }
 
 }
+export default Migration
+// (async () => {
+//   const migrate = new Migration({
+//     dir: 'D:\\workspace\\zhongcai\\jingrong\\database\\migrations',
+//     modelKey:''
+//   })
 
+//   await migrate.initMigration()
+//   await migrate.getComment()
+
+//   // console.log(migrate.modelNames)
+//   // migrate.generateModelFileData('user')
+//   // await model.initModel()
+//   // model.normalizeAttribute()
+//   // console.log(Integrate.generateModelData('wxPassport', model.db['wxPassport']))
+// })()
