@@ -7,9 +7,12 @@ import * as path from 'path'
 import QueryInterfaceSpy from './QueryInterfaceSpy.js'
 import * as sinon from 'sinon'
 import Integrate from './Integrate'
-import { plainObject, getComments, parse } from './util'
+import { plainObject, getComments, parse, tranformToObj } from './util'
+import { dbCommentObj } from './Comment'
 import * as recast from "recast";
 import * as fs from 'fs'
+import { getDbCommentFromAst } from './ast'
+import * as _ from 'lodash'
 const readFileAsync = fs.promises.readFile
 // import { Sequelize } from 'sequelize/types'
 // const DataTypes = Sequelize.DataTypes
@@ -28,10 +31,10 @@ interface commentOption {
   //if retain js comment
   comment: boolean
 }
-export interface modelComment {
-  modelName: string
-  comment: FieldComment[]
-}
+// export interface dbCommentObj {
+//   modelName: string
+//   comment: FieldComment[]
+// }
 interface FieldComment {
   field: string
   comment: string
@@ -40,7 +43,7 @@ class Migration {
   public config: Config;
   private _migrationPaths: string[]
   private _queryInterfaceSpy: QueryInterfaceSpy
-  private _comments: modelComment[]
+  private dbComment: dbCommentObj
   constructor(config: Config) {
     this.config = config;
     this._init()
@@ -67,7 +70,7 @@ class Migration {
     return Object.keys(this.db)
   }
   public getComment() {
-    return this._comments
+    return this.dbComment
   }
   public getMigrationType(ast: recast.types.ASTNode) {
     recast.visit(ast, {
@@ -85,28 +88,23 @@ class Migration {
       throw new Error('please provide key to find table in migration')
     }
 
-    const comments = []
-    for (const migrationPath of migrationPaths) {
+    // const comments: dbCommentObj[] = []
+    const dbCommentObjs: dbCommentObj[] = await Promise.all(migrationPaths.map(async migrationPath => {
       try {
         const data = await readFileAsync(migrationPath, { encoding: 'utf8' })
         const ast = recast.parse(data)
-        const properties = parse(modelKey, ast)
-        const modelName = parse(modelNameKey, ast)
-        const comment = getComments(properties)
-        comments.push({
-          modelName,
-          comment
-        })
+        return tranformToObj(getDbCommentFromAst(ast))
       } catch (err) {
         console.log('read file ' + migrationPath + ' error', err)
       }
+      return {}
+    }))
 
-    }
-    this._comments = comments
+    this.dbComment = _.merge({}, ...dbCommentObjs)
   }
 
   public generateModelFileData(modelName: string, options?: commentOption) {
-    let comment: modelComment[] = []
+    let comment: dbCommentObj = null
     if (options && options.comment) {
       comment = this.getComment()
     }

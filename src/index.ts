@@ -4,10 +4,21 @@ import * as _ from 'lodash'
 import * as path from 'path'
 import * as fs from 'fs'
 import * as recast from 'recast'
+// import { NodePath, Visitor, ASTNode } from 'ast-types'
+import { NodePath, ASTNode, Visitor, Type } from 'ast-types'
+import { getDbCommentFromAst } from './ast'
+
+// type NodePath = NodePath
 type Property = recast.types.namedTypes.Property
+type DeclareVariable = recast.types.namedTypes.DeclareVariable
+type VariableDeclaration = recast.types.namedTypes.VariableDeclaration
+type MemberExpression = recast.types.namedTypes.MemberExpression
+// type NodePath=recast.types.namedTypes
+// type NodePath = recast.types.namedTypes
 const { writeFile } = fs.promises
 import { fstat } from "fs"
-import { plainObject } from "./util"
+import { plainObject, getComments } from "./util"
+import { Interface } from "readline"
 ~(async () => {
   const migration = new Migration({
     dir: "D:\\workspace\\zhongcai\\jingrong\\database\\migrations",
@@ -16,7 +27,9 @@ import { plainObject } from "./util"
   })
   const modelDir = 'D:\\workspace\\zhongcai\\jingrong\\app\\model'
   await migration.initMigration()
+  console.log('begin init comment')
   await migration.initComment()
+  console.log()
   const modelFileDatas = migration.generateModelFileDatas({
     comment: true
   })
@@ -28,133 +41,4 @@ import { plainObject } from "./util"
     const modelData = modelFileDatas[modelName]
     await writeFile(modelPath, modelData)
   }))
-})
-const ast = recast.parse(`
-'use strict'
-
-module.exports = {
-  up: async (db, Sequelize) => {
-    const { TEXT, INTEGER, DATE, DATEONLY, STRING, BIGINT, FLOAT, DECIMAL } = Sequelize
-    const addColumns = {
-      companyNeed:	{
-        type: STRING(50), // 需求类别种类
-      },
-      message:	{
-        status: { type: INTEGER(2), defaultValue: 1 }, // 状态 1成功 2失败
-      },
-
-    }
-    await Promise.all(Object.keys(addColumns).map(async table =>
-      await Promise.all(Object.keys(addColumns[table]).map(key => db.addColumn(table, key, addColumns[table][key]
-      )))
-      // queryInterface.addColumn('company',key,columns[key])
-    ))
-  },
-
-  down: (queryInterface, Sequelize) => {
-    /*
-      Add reverting commands here.
-      Return a promise to correctly handle asynchronicity.
-
-      Example:
-      return queryInterface.dropTable('users');
-    */
-  },
-}
-
-
-`)
-function getPathType(path: any) {
-  return path.value.type
-}
-function getPathName(path: any) {
-  return path.value.name
-}
-function getPropertyName(property: any) {
-  return property.key.name
-}
-function getIdentifierName(identifier: any) {
-  return identifier.name
-}
-function findPropertyByName(properties: any, name: string) {
-  return properties.find((property: any) => getPropertyName(property) === name)
-}
-function isEqualName(path: any, name: string) {
-  return getPathName(path) === name
-}
-function isEqualType(path: any, typeName: string) {
-  return path.value.type === typeName
-}
-function getPathByIdentifierName(ast: any, name: string) {
-  let result
-  recast.visit(ast, {
-    visitIdentifier: path => {
-      if (isEqualName(path, name)) {
-        result = path
-      }
-      return false
-    }
-  })
-  return result
-}
-function getMemberExpressionByName(ast: any, name: string): any {
-  let result
-  recast.visit(ast, {
-    visitMemberExpression: (path: any) => {
-      console.log(path)
-      if (path.value.object.name === name) {
-        result = path
-      }
-      return false
-    }
-  })
-  return result
-}
-const mapMethodName = {
-  addColumn: 'addColumns',
-  changeColumns: 'changeColumns'
-}
-function getModelFromAst(ast: any) {
-  let model: plainObject = null
-  recast.visit(ast, {
-    visitIdentifier: path => {
-      if (isEqualName(path, 'exports')) {
-        if (isEqualType(path.parentPath, 'MemberExpression')) {
-          if (isEqualType(path.parentPath.parentPath, 'AssignmentExpression')) {
-            const objectExpression = path.parentPath.parentPath.value.right
-            const up = findPropertyByName(objectExpression.properties, 'up')
-            if (up) {
-              //getPathName(up) ===ArrowFunctionExpression
-              const identifierName = getIdentifierName(up.value.params[0])
-              // console.log('identifierName', identifierName)
-              const queryInterfaceIdentifier = getMemberExpressionByName(up.value.body, identifierName)
-              if (queryInterfaceIdentifier) {
-
-
-                const methodName: string = queryInterfaceIdentifier.value.property.name
-                if (methodName === 'createTable') {
-                  model = {
-                    methodName,
-                    modelName: queryInterfaceIdentifier.parentPath.value.arguments[0].value,
-                    literalAttr: queryInterfaceIdentifier.parentPath.value.arguments[1]
-                  }
-                } else if (['addColumn', 'changeColumn'].find(v => v === methodName)) {
-                  // const name = mapMethodName[methodName]
-                } else {
-                  throw new Error('only support  createTable addColumn changeColumn')
-                }
-
-                // modelName = queryInterfaceIdentifier.parentPath.value.arguments[0].value
-                // model.literalAttr = queryInterfaceIdentifier.parentPath.value.arguments[1]
-              }
-
-            }
-          }
-        }
-      }
-      return false
-    }
-  })
-  return model
-}
-console.log(getModelFromAst(ast))
+})()

@@ -1,4 +1,5 @@
 import { visit, types, parse } from "recast";
+import { dbComment, dbCommentObj } from './Comment'
 type Property = types.namedTypes.Property
 type ObjectExpression = types.namedTypes.ObjectExpression
 type Comment = types.namedTypes.Comment
@@ -64,4 +65,19 @@ function toCode(partialAst: any) {
   }
   return partialAst
 }
-export { getComments, parseObject as parse }
+function tranformToObj(dbComment: dbComment): dbCommentObj {
+  let newdbComment: dbCommentObj = {}
+  for (const [tableName, tableComment] of Object.entries(dbComment)) {
+    const tableCommentObj: plainObject = {}
+    tableComment.forEach(t => {
+      //ignore empty comment
+      if (t.comment) {
+        tableCommentObj[t.field] = t.comment
+      }
+    })
+    newdbComment[tableName] = tableCommentObj
+  }
+  return newdbComment
+
+}
+export { getComments, parseObject as parse, tranformToObj }

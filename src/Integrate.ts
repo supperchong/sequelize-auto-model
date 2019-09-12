@@ -4,7 +4,8 @@ const _ = require('lodash');
 import * as recast from "recast";
 import * as prettier from 'prettier'
 import { plainObject } from "./util";
-import { modelComment } from './Migration'
+// import { dbCommentObj } from './Migration'
+import { dbCommentObj, modelCommentObj } from './Comment'
 interface db {
   [tableName: string]: ModelAttributes
 }
@@ -58,19 +59,19 @@ class Integrate {
   static isEqual(attr1: ArrayDataTypeOptions<AbstractDataType>, attr2: ArrayDataTypeOptions<AbstractDataType>): boolean {
     return attr1.type.toSql() === attr2.type.toSql()
   }
-  static generateModelData(modelName: string, model: ModelAttributes, comments?: modelComment[]) {
+  static generateModelData(modelName: string, model: ModelAttributes, dbComment?: dbCommentObj) {
     const upperModelName = _.upperFirst(modelName)
     const fields = Object.keys(model)
     let out = ''
-    const commentObj = comments.find(c => c.modelName === modelName)
+    const commentObj: modelCommentObj = dbComment[modelName]
     const sequelizeFieldSet = new Set()
     for (const field of fields) {
       const attr = model[field]
       let commentStr = ''
       if (commentObj) {
-        const fieldComment = commentObj.comment.find(c => c.field === field)
-        if (fieldComment && fieldComment.comment) {
-          commentStr = '//' + fieldComment.comment
+        const fieldComment = commentObj[field]
+        if (fieldComment) {
+          commentStr = '//' + fieldComment
         }
       }
       const keys = Object.keys(attr)
