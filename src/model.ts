@@ -8,7 +8,7 @@ import QueryInterfaceSpy from './QueryInterfaceSpy.js'
 import * as sinon from 'sinon'
 import App from './appSpy'
 import Integrate from './Integrate'
-import * as recast from "recast";
+import * as recast from 'recast'
 import * as fs from 'fs'
 import * as _ from 'lodash'
 // const _ = require('lodash');
@@ -17,20 +17,21 @@ import * as _ from 'lodash'
 const modelRegExp = /\.js$/
 const isModelPath: (path: string) => boolean = path => modelRegExp.test(path)
 const resolvePath: (dir: string) => (p: string) => string = dir => p => path.resolve(dir, p)
-const ignorePathFilter: (ignorePath: string[]) => (p: string) => boolean = (ignorePath = []) => p => !ignorePath.find(v => v === p)
+const ignorePathFilter: (ignorePath: string[]) => (p: string) => boolean = (ignorePath = []) => p =>
+  !ignorePath.find(v => v === p)
 export interface Config {
-  dir: string;
-  ignores?: string[];
+  dir: string
+  ignores?: string[]
 }
 
 // DataTypes
-class Model {
-  public config: Config;
+export default class Model {
+  public config: Config
   private _modelPaths: string[]
   private _queryInterfaceSpy: QueryInterfaceSpy
   private _app: App
   constructor(config: Config) {
-    this.config = config;
+    this.config = config
     this._init()
   }
   private _init() {
@@ -53,14 +54,13 @@ class Model {
     return this._modelPaths
   }
   public get db() {
-
     return this._app.db
   }
   public get app() {
     return this._app
   }
   public readModelAst(code: string) {
-    const ast = recast.parse(code);
+    const ast = recast.parse(code)
     return ast
   }
   public changeAst(modelName: string, newAttributes: any) {
@@ -74,13 +74,24 @@ class Model {
     // const fields = _.union(curFields, newFields)
     for (const field of newFields) {
       if (!_.isEqual(attributes[field], newAttributes[field])) {
-        console.log(`table ${modelName}:, migration has ${JSON.stringify(newAttributes[field])} , and model has ${JSON.stringify(attributes[field])}`)
+        console.log(
+          `table ${modelName}:, migration has ${JSON.stringify(
+            newAttributes[field]
+          )} , and model has ${JSON.stringify(attributes[field])}`
+        )
       }
     }
   }
   public models(): modelObject[] {
     return this.app.models
   }
+  public getModel(modelName: string): modelObject {
+    if (!modelName) {
+      throw new Error('loss modelName')
+    }
+    return this.models().find(model => model.modelName === modelName)
+  }
+
   public normalizeAttribute() {
     const tableNames = Object.keys(this.db)
     for (const tableName of tableNames) {
@@ -119,34 +130,28 @@ class Model {
         }
       }
     }
-
   }
-
 }
-(async () => {
-  const model = new Model({
-    dir: 'D:\\workspace\\xiaochuang_3.0\\backend\\app\\model'
-  })
+// (async () => {
+//   const model = new Model({
+//     dir: 'D:\\workspace\\xiaochuang_3.0\\backend\\app\\model'
+//   })
 
-  await model.initModel()
-  model.normalizeAttribute()
-  console.log(Integrate.generateModelData('wxPassport', model.db['wxPassport']))
-  // console.log(model.models('wxPassport',))
-  // const tableNames = Object.keys(model.db)
-  // for (const tableName of tableNames) {
-  //   const table = model.db[tableName]
-  //   const fields = Object.keys(table)
-  //   for (const field of fields) {
-  //     table[field] = Integrate.normalizeAttribute(table[field])
-  //   }
-  // }
-  // for (const key in model.db.wxPassport.createdAt.type) {
-  //   console.log('key', key)
-  // }
-  // console.log(DataTypes)
-  // console.log('_toRawString', model.db.classification)
-})()
-
-
-
-
+//   await model.initModel()
+//   model.normalizeAttribute()
+//   console.log(Integrate.generateModelData('wxPassport', model.db['wxPassport']))
+//   // console.log(model.models('wxPassport',))
+//   // const tableNames = Object.keys(model.db)
+//   // for (const tableName of tableNames) {
+//   //   const table = model.db[tableName]
+//   //   const fields = Object.keys(table)
+//   //   for (const field of fields) {
+//   //     table[field] = Integrate.normalizeAttribute(table[field])
+//   //   }
+//   // }
+//   // for (const key in model.db.wxPassport.createdAt.type) {
+//   //   console.log('key', key)
+//   // }
+//   // console.log(DataTypes)
+//   // console.log('_toRawString', model.db.classification)
+// })()

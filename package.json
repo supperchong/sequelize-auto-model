@@ -12,8 +12,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@types/sinon": "^7.0.13",
     "sequelize": "^5.18.1",
     "sinon": "^7.4.2"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.14.138",
+    "@types/prettier": "^1.18.2",
+    "@types/sinon": "^7.0.13"
   }
 }

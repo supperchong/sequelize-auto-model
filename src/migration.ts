@@ -9,7 +9,7 @@ import * as sinon from 'sinon'
 import Integrate from './Integrate'
 import { plainObject, getComments, parse, tranformToObj } from './util'
 import { dbCommentObj } from './Comment'
-import * as recast from "recast";
+import * as recast from 'recast'
 import * as fs from 'fs'
 import { getDbCommentFromAst } from './ast'
 import * as _ from 'lodash'
@@ -19,12 +19,13 @@ const readFileAsync = fs.promises.readFile
 const migrationRegExp = /^\d{14}.*?\.js$/
 const isMigrationPath: (path: string) => boolean = path => migrationRegExp.test(path)
 const resolvePath: (dir: string) => (p: string) => string = dir => p => path.resolve(dir, p)
-const ignorePathFilter: (ignorePath: string[]) => (p: string) => boolean = ignorePath => p => !ignorePath.find(v => v === p)
+const ignorePathFilter: (ignorePath: string[]) => (p: string) => boolean = ignorePath => p =>
+  !ignorePath.find(v => v === p)
 export interface Config {
-  dir: string;
-  ignores?: string[];
-  modelKey?: string;//use to find table object in migrations
-  modelNameKey?: string;// use to find table name
+  dir: string
+  ignores?: string[]
+  modelKey?: string //use to find table object in migrations
+  modelNameKey?: string // use to find table name
   // modelDir: string;
 }
 interface commentOption {
@@ -40,12 +41,12 @@ interface FieldComment {
   comment: string
 }
 class Migration {
-  public config: Config;
+  public config: Config
   private _migrationPaths: string[]
   private _queryInterfaceSpy: QueryInterfaceSpy
   private dbComment: dbCommentObj
   constructor(config: Config) {
-    this.config = config;
+    this.config = config
     this._init()
   }
   private _init() {
@@ -89,16 +90,18 @@ class Migration {
     }
 
     // const comments: dbCommentObj[] = []
-    const dbCommentObjs: dbCommentObj[] = await Promise.all(migrationPaths.map(async migrationPath => {
-      try {
-        const data = await readFileAsync(migrationPath, { encoding: 'utf8' })
-        const ast = recast.parse(data)
-        return tranformToObj(getDbCommentFromAst(ast))
-      } catch (err) {
-        console.log('read file ' + migrationPath + ' error', err)
-      }
-      return {}
-    }))
+    const dbCommentObjs: dbCommentObj[] = await Promise.all(
+      migrationPaths.map(async migrationPath => {
+        try {
+          const data = await readFileAsync(migrationPath, { encoding: 'utf8' })
+          const ast = recast.parse(data)
+          return tranformToObj(getDbCommentFromAst(ast))
+        } catch (err) {
+          console.log('read file ' + migrationPath + ' error', err)
+        }
+        return {}
+      })
+    )
 
     this.dbComment = _.merge({}, ...dbCommentObjs)
   }
@@ -112,10 +115,21 @@ class Migration {
     const modelData = Integrate.generateModelData(modelName, model, comment)
     return modelData
   }
+  public getModelObjectData(modelName: string, options?: commentOption) {
+    let comment: dbCommentObj = null
+    if (options && options.comment) {
+      comment = this.getComment()
+    }
+    const model = this.db[modelName]
+    const modelData = Integrate.generateModelObjectLiteralData(modelName, model, comment)
+    return modelData
+  }
   public generateModelFileDatas(options?: commentOption) {
     const modelNames = this.modelNames
     const modelFileDatas: plainObject = {}
-    modelNames.forEach(modelName => modelFileDatas[modelName] = this.generateModelFileData(modelName, options))
+    modelNames.forEach(
+      modelName => (modelFileDatas[modelName] = this.generateModelFileData(modelName, options))
+    )
     return modelFileDatas
   }
   public normalizeAttribute() {
@@ -132,7 +146,7 @@ class Migration {
     const migrationPath = this.migrationPaths
     // sinon.stub()
     const sequelizeSpy = new SequelizeSpy()
-    const queryInterfaceSpy = new QueryInterfaceSpy((sequelizeSpy as any))
+    const queryInterfaceSpy = new QueryInterfaceSpy(sequelizeSpy as any)
     this._queryInterfaceSpy = queryInterfaceSpy
     for (const p of migrationPath) {
       try {
@@ -145,7 +159,6 @@ class Migration {
     }
     this.normalizeAttribute()
   }
-
 }
 export default Migration
 // (async () => {

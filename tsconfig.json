@@ -10,17 +10,8 @@
     "outDir": "dist",
     "noLib": false,
     "skipLibCheck": true,
-    "lib": [
-      "es7",
-      "es5",
-      "es2018"
-    ]
+    "lib": ["es7", "es5", "es2018", "dom"]
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/*.spec.ts"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "**/*.spec.ts"]
 }

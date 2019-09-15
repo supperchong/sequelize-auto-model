@@ -8,3 +8,4 @@ run
 logs
 coverage
 package-lock.json
+dist/

@@ -1,11 +1,19 @@
-import { Sequelize, Model, ModelOptions, DataTypes, AbstractDataType, ModelAttributes, ModelCtor } from 'sequelize'
+import {
+  Sequelize,
+  Model,
+  ModelOptions,
+  DataTypes,
+  AbstractDataType,
+  ModelAttributes,
+  ModelCtor
+} from 'sequelize'
 import MyError from './MyError'
-const _ = require('lodash');
-
+import { ASTNode } from 'ast-types'
+const _ = require('lodash')
 export interface modelObject {
   modelName: string
   attributes: ModelAttributes
-  ast?: plainObject
+  ast?: ASTNode
 }
 interface plainObject {
   [key: string]: string | plainObject
@@ -25,12 +33,12 @@ export class SequelizeSpy {
           attributes
         })
       }
-    };
-    options.modelName = modelName;
+    }
+    options.modelName = modelName
     options.sequelize = this
-    model.init(attributes, options);
+    model.init(attributes, options)
 
-    return model;
+    return model
   }
 }
 
@@ -85,14 +93,12 @@ const methods = [
   'databaseVersion'
 ]
 for (const method of methods) {
-  (SequelizeSpy.prototype as any)[method] = function () {
+  ;(SequelizeSpy.prototype as any)[method] = function() {
     throw new MyError({
       code: 1,
       msg: `method ${method} not support will skip file`
     })
   }
 }
-
-
 
 export default SequelizeSpy

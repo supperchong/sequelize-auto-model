@@ -1,5 +1,4 @@
-
-import Migration from "./Migration"
+import Migration from './Migration'
 import * as _ from 'lodash'
 import * as path from 'path'
 import * as fs from 'fs'
@@ -46,7 +45,7 @@ function getPathByIdentifierName(ast: any, name: string, type: string) {
   })
   return result
 }
-function getVariableDeclaratorPathByIdentifierName(ast: ASTNode, name: string) {
+function getVariableDeclaratorPathByIdentifierName(ast: ASTNode, name: string): any {
   let result
   recast.visit(ast, {
     visitVariableDeclarator: (path: any) => {
@@ -62,8 +61,19 @@ function getMemberExpressionByName(ast: ASTNode, name: string): any {
   let result
   recast.visit(ast, {
     visitMemberExpression: (path: any) => {
-
       if (path.value.object.name === name) {
+        result = path
+      }
+      return false
+    }
+  })
+  return result
+}
+function getPropertyOfMemberExpressionByName(ast: ASTNode, name: string): any {
+  let result
+  recast.visit(ast, {
+    visitMemberExpression: (path: any) => {
+      if (path.value.property.name === name) {
         result = path
       }
       return false
@@ -73,7 +83,7 @@ function getMemberExpressionByName(ast: ASTNode, name: string): any {
 }
 enum ChangeDataBaseMethod {
   addColumn = 'addColumn',
-  changeColumns = 'changeColumns',
+  changeColumn = 'changeColumn',
   createTable = 'createTable'
 }
 interface MapMethodName {
@@ -81,7 +91,7 @@ interface MapMethodName {
 }
 const mapMethodName: MapMethodName = {
   addColumn: 'addColumns',
-  changeColumns: 'changeColumns'
+  changeColumn: 'changeColumns'
 }
 function getModelFromAst(ast: ASTNode): dbAttributesAst {
   let model: dbAttributesAst = null
@@ -94,10 +104,13 @@ function getModelFromAst(ast: ASTNode): dbAttributesAst {
             const up = findPropertyByName(objectExpression.properties, 'up')
             if (up) {
               const identifierName = getIdentifierName(up.value.params[0])
-              const queryInterfaceIdentifier = getMemberExpressionByName(up.value.body, identifierName)
+              const queryInterfaceIdentifier = getMemberExpressionByName(
+                up.value.body,
+                identifierName
+              )
               if (queryInterfaceIdentifier) {
-
-                const methodName: ChangeDataBaseMethod = queryInterfaceIdentifier.value.property.name
+                const methodName: ChangeDataBaseMethod =
+                  queryInterfaceIdentifier.value.property.name
                 if (methodName === 'createTable') {
                   model = {
                     methodName,
@@ -105,7 +118,10 @@ function getModelFromAst(ast: ASTNode): dbAttributesAst {
                     attributesAst: queryInterfaceIdentifier.parentPath.value.arguments[1]
                   }
                 } else if (['addColumn', 'changeColumn'].find(v => v === methodName)) {
-                  const path: any = getVariableDeclaratorPathByIdentifierName(ast, mapMethodName[methodName])
+                  const path: any = getVariableDeclaratorPathByIdentifierName(
+                    ast,
+                    mapMethodName[methodName]
+                  )
                   if (path) {
                     model = {
                       methodName,
@@ -116,7 +132,6 @@ function getModelFromAst(ast: ASTNode): dbAttributesAst {
                   throw new Error('only support  createTable addColumn changeColumn')
                 }
               }
-
             }
           }
         }
@@ -137,7 +152,6 @@ function getDbCommentFromAst(ast: ASTNode): dbComment {
   let dbComment: dbComment = {}
   if (!model) return dbComment
   switch (model.methodName) {
-
     case 'createTable': {
       let tableComment = {}
       dbComment[model.tableName] = getComments(model.attributesAst)
@@ -156,4 +170,9 @@ function getDbCommentFromAst(ast: ASTNode): dbComment {
   return dbComment
 }
 
-export { getDbCommentFromAst }
+export {
+  getDbCommentFromAst,
+  getMemberExpressionByName,
+  getPropertyOfMemberExpressionByName,
+  getVariableDeclaratorPathByIdentifierName
+}
